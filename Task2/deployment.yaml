@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: scaletestapp
+  labels:
+    app: scaletestapp
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: scaletestapp
+  template:
+    metadata:
+      labels:
+        app: scaletestapp
+    spec:
+      containers:
+        - name: scaletestapp
+          image: ghcr.io/yandex-practicum/scaletestapp:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - name: http
+              containerPort: 8080
+          resources:
+            requests:
+              # HPA вычисляет averageUtilization как usage / REQUEST (не limit!).
+              # request (20Mi) < limit (30Mi) — так порог 80% = 16Mi срабатывает
+              # ЗАРАНЕЕ, с запасом до OOM (30Mi). Иначе (при request=limit) под
+              # упирается в лимит и OOMKill-ится раньше, чем HPA успеет масштабировать.
+              memory: "20Mi"
+              cpu: "50m"
+            limits:
+              # Лимит памяти = 30Mi (по условию задания).
+              memory: "30Mi"
+              cpu: "200m"
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 3
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
